@@ -1,16 +1,15 @@
 /* =========================================================================
-   Kintara-like — an isometric browser MMO prototype.
+   PixelQuest — an isometric browser MMO prototype.
 
-   Inspired by kintara.gg (isometric MMO on Solana). This is a single-player,
-   no-backend build: the "other players" are local bots, and wallet connect is
-   used purely as a login identity that picks which save slot to load.
+   A single-player, no-backend build: the "other players" are local bots, and
+   wallet connect is used purely as a login identity that picks which save slot
+   to load.
 
-   Mechanics modelled on Kintara:
+   Mechanics:
      - Click-to-move on an isometric tile map.
      - Per-skill XP that levels up: Woodcutting, Mining, Fishing (cap 20).
      - Tools gate gathering: Axe -> trees, Pickaxe -> stone & coal, Rod -> fish.
-     - A Forge (Kintara's anvil) upgrades tools; higher tiers gather more and
-       grant more XP, like Kintara's "Level 2 tools gather twice as much".
+     - A Forge upgrades tools; higher tiers gather more and grant more XP.
 
    No tokens, no transactions, no on-chain calls. Identity only.
    ========================================================================= */
