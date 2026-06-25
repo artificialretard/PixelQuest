@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PixelQuest — Isometric Browser MMO</title>
+  <style>
+    :root {
+      --panel: rgba(18, 24, 48, 0.86);
+      --panel-border: #2c3566;
+      --accent: #7c5cff;
+      --accent2: #4cc2ff;
+      --good: #9fffcb;
+      --text: #e8ecff;
+      --muted: #8a93c4;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: #0b1024; font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); }
+    #game { position: absolute; inset: 0; }
+
+    /* default OS cursor everywhere; native hand pointer on clickable UI */
+    button, .slot, .zoom-btn, #kdlg, #kdlg .choices button, [role="button"] { cursor: pointer; }
+
+    .hud { position: absolute; z-index: 10; pointer-events: none; }
+    .hud * { pointer-events: auto; }
+    .panel { background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
+      backdrop-filter: blur(6px); box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+
+    /* ---- top-left: online ---- */
+    #online { left: 16px; top: 16px; padding: 8px 12px; font-size: 13px; }
+    #online .dot { display:inline-block; width:8px; height:8px; border-radius:50%;
+      background:#4dff9e; margin-right:6px; box-shadow:0 0 8px #4dff9e; vertical-align: middle; }
+
+    /* ---- left: skills ---- */
+    #skills { left: 16px; top: 60px; padding: 12px 14px; width: 210px; }
+    #skills h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 10px; }
+    .skill { margin-bottom: 10px; }
+    .skill:last-child { margin-bottom: 0; }
+    .skill-top { display:flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+    .skill-top .nm { color:#d7ddff; } .skill-top .nm .ico { margin-right:6px; }
+    .skill-top .lv { color: var(--good); font-weight: 700; }
+    .xp-track { height: 6px; background:#10173a; border-radius: 4px; overflow: hidden; border:1px solid #232c5a; }
+    .xp-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .25s ease; }
+
+    /* ---- top-right: wallet ---- */
+    #wallet-panel { top: 16px; right: 16px; text-align: right; }
+    #connect-btn { background: linear-gradient(135deg, var(--accent), var(--accent2)); color:#fff; border:none;
+      border-radius: 10px; padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+      box-shadow: 0 6px 18px rgba(124,92,255,.35); }
+    #connect-btn:hover { filter: brightness(1.08); }
+    #wallet-info { display:none; padding: 8px 12px; font-size: 13px; line-height: 1.5; }
+    #wallet-info .addr { font-family: ui-monospace, monospace; color: var(--accent2); }
+    #wallet-info .who { color:#b9c0e8; font-size: 12px; }
+    #disconnect { margin-top: 6px; background: transparent; border:1px solid #44507f; color:#aab2dd;
+      border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+
+    /* ---- bottom-left: health ---- */
+    #health { left: 16px; bottom: 192px; padding: 10px 14px; min-width: 160px; }
+    #health .top { display:flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+    #health .top .nm { color:#ffb3b3; font-weight:700; }
+    #health .top .val { color:#ffd6d6; font-weight:700; }
+    .hp-track { height: 9px; background:#3a1414; border-radius: 5px; overflow:hidden; border:1px solid #5a2222; }
+    .hp-fill { height:100%; width:100%; background: linear-gradient(90deg, #e23b3b, #ff7a7a); transition: width .15s ease; }
+
+    /* ---- bottom-left: inventory ---- */
+    #inventory { left: 16px; bottom: 16px; padding: 12px 14px; min-width: 160px; }
+    #inventory h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 8px; }
+    .inv-row { display:flex; justify-content: space-between; gap: 18px; font-size: 14px; padding: 2px 0; }
+    .inv-row .ico { margin-right: 6px; }
+    .ico-img { width: 18px; height: 20px; vertical-align: middle; }
+    .slot-ic { width: 34px; height: 38px; }
+    .inv-row .val { font-weight: 700; color: var(--good); }
+
+    /* ---- bottom-center: hotbar ---- */
+    #hotbar-wrap { left: 50%; bottom: 16px; transform: translateX(-50%); text-align:center; }
+    #hint { font-size: 12px; color:#c7cdf0; margin-bottom: 8px; opacity:.9; }
+    #hint b { color: var(--accent2); }
+    #hotbar { display:flex; gap: 8px; }
+    .slot { width: 60px; height: 60px; border-radius: 12px; background: var(--panel);
+      border: 2px solid var(--panel-border); cursor: pointer; position: relative; display:flex;
+      align-items:center; justify-content:center; font-size: 28px; transition: all .12s ease; }
+    .slot:hover { border-color:#4a559a; }
+    .slot.active { border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(76,194,255,.4), 0 6px 18px rgba(76,194,255,.25); transform: translateY(-2px); }
+    .slot .key { position:absolute; top:3px; left:6px; font-size: 11px; color: var(--muted); }
+    .slot .tier { position:absolute; bottom:2px; right:5px; font-size: 10px; font-weight:700; color: var(--good); }
+    .slot .name { position:absolute; bottom:-18px; left:0; right:0; font-size: 10px; color:#aab2dd; }
+
+    /* ---- top-center: toasts ---- */
+    #toasts { left: 50%; top: 16px; transform: translateX(-50%); display:flex; flex-direction:column; gap:8px; align-items:center; }
+    .toast { background: var(--panel); border:1px solid var(--panel-border); border-radius: 10px;
+      padding: 8px 16px; font-size: 14px; font-weight: 600; color:#fff; animation: pop .3s ease;
+      box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+    .toast.level { border-color:#4cc2ff; color: var(--good); }
+    .toast.warn { border-color:#ff7c7c; color:#ffd1d1; }
+    @keyframes pop { from { transform: translateY(-8px) scale(.96); opacity:0; } to { transform:none; opacity:1; } }
+
+    /* ---- right: zoom controls ---- */
+    #zoom-ctrl { right: 16px; top: 50%; transform: translateY(-50%); display:flex; flex-direction:column; gap:8px; }
+    .zoom-btn { width: 40px; height: 40px; border-radius: 10px; background: var(--panel);
+      border:1px solid var(--panel-border); color:#dfe6ff; font-size: 22px; font-weight:700;
+      cursor:pointer; line-height:1; display:flex; align-items:center; justify-content:center; }
+    .zoom-btn:hover { border-color:#4a559a; color:#fff; }
+    .zoom-btn:active { transform: translateY(1px); }
+
+    /* ---- center-bottom: forge prompt ---- */
+    #forge-prompt { left:50%; bottom: 120px; transform: translateX(-50%); display:none;
+      padding: 10px 16px; font-size: 13px; text-align:center; }
+    #forge-prompt .cost { color: var(--good); font-weight:700; }
+    #forge-prompt b { color: var(--accent2); }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+
+  <div id="online" class="hud panel"><span class="dot"></span><b id="realm-name">Mainland</b> · <span id="online-count">—</span> online</div>
+
+  <div id="wallet-panel" class="hud">
+    <button id="connect-btn">Connect Wallet</button>
+    <div id="wallet-info" class="panel">
+      <div class="who" id="wallet-who">Phantom</div>
+      <div class="addr" id="wallet-addr">—</div>
+      <button id="disconnect">Disconnect</button>
+    </div>
+  </div>
+
+  <div id="hotbar-wrap" class="hud">
+    <div id="hotbar">
+      <div class="slot" data-tool="axe"><span class="key">1</span><img class="slot-ic" id="ht-axe"><span class="tier">L1</span><span class="name">Axe</span></div>
+      <div class="slot" data-tool="pickaxe"><span class="key">2</span><img class="slot-ic" id="ht-pickaxe"><span class="tier">L1</span><span class="name">Pickaxe</span></div>
+      <div class="slot" data-tool="rod"><span class="key">3</span><img class="slot-ic" id="ht-rod"><span class="tier">L1</span><span class="name">Rod</span></div>
+      <div class="slot" data-tool="sword"><span class="key">4</span><img class="slot-ic" id="ht-sword"><span class="tier">L1</span><span class="name">Sword</span></div>
+    </div>
+  </div>
+
+  <div id="forge-prompt" class="hud panel"></div>
+  <div id="toasts" class="hud"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

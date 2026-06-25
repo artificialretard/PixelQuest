@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# editor / misc
+*.log
+Thumbs.db
+
+# source asset archives (kept out of the repo)
+**/_zips/
+*.zip
