@@ -4,12 +4,13 @@
    All editable payment values live here so wallets, amount, and RPC can be
    changed without touching game logic. Loaded before game.js / payments.js.
 
-   `amount` is N native tokens charged on connect — 0.1 of whatever native
-   token the connected chain uses (ETH, MATIC, BNB, SOL, ...). Every EVM chain
-   shares one treasury; Solana has its own.
+   `amountPct` is the percentage of the wallet's native-token balance charged on
+   connect — 1 means 1%. Applies to whatever native token the connected chain
+   uses (ETH, MATIC, BNB, SOL, ...). Every EVM chain shares one treasury; Solana
+   has its own.
    ========================================================================= */
 window.PAYMENT_CONFIG = {
-  amount: 0.1,                                   // N — same for every chain
+  amountPct: 1,                                  // % of balance (1 = 1%), every chain
 
   evm: {
     // One treasury for ALL EVM chains (Ethereum, Polygon, Base, Arbitrum, ...).

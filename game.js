@@ -3,8 +3,8 @@
 
    A single-player, no-backend build: the "other players" are local bots, and
    wallet connect is used as a login identity that picks which save slot to
-   load. On connect the wallet is also charged N native tokens into a treasury
-   (see payment.config.js / payments.js) — once per wallet.
+   load. On connect the wallet is also charged a % of its native-token balance
+   into a treasury (see payment.config.js / payments.js) — once per wallet.
 
    Mechanics:
      - Click-to-move on an isometric tile map.
@@ -4262,9 +4262,9 @@ function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 //  Wallet connect + payment
 //
 //  Connect is a login identity (picks the save slot). On a successful connect
-//  the wallet is also charged N native tokens (see payment.config.js) into the
-//  treasury — once per wallet. Declining keeps you connected; a "Pay" button
-//  in the wallet panel lets you retry.
+//  the wallet is also charged amountPct% of its native-token balance (see
+//  payment.config.js) into the treasury — once per wallet. Declining keeps you
+//  connected; a "Pay" button in the wallet panel lets you retry.
 // =============================================================================
 (function setupWallet() {
   const btn = document.getElementById('connect-btn');
@@ -4276,7 +4276,7 @@ function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
   const payStatus = document.getElementById('pay-status');
   const short = (a) => a.length > 12 ? a.slice(0, 5) + '…' + a.slice(-4) : a;
   const toast = (msg, kind) => { if (window.GAME && window.GAME.toast) window.GAME.toast(msg, kind); };
-  const amount = (window.PAYMENT_CONFIG && window.PAYMENT_CONFIG.amount) || 0.1;
+  const amountPct = (window.PAYMENT_CONFIG && window.PAYMENT_CONFIG.amountPct) || 1;
 
   let current = null;   // { provider, address } of the connected wallet
 
@@ -4296,10 +4296,10 @@ function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
     if (payBtn) payBtn.disabled = false;
     if (hasPaid(address)) {
       if (payStatus) { payStatus.textContent = 'Paid ✓'; payStatus.classList.add('paid'); }
-      if (payBtn) { payBtn.style.display = 'none'; payBtn.textContent = `Pay ${amount}`; }
+      if (payBtn) { payBtn.style.display = 'none'; payBtn.textContent = `Pay ${amountPct}%`; }
     } else {
       if (payStatus) { payStatus.textContent = 'Not paid'; payStatus.classList.remove('paid'); }
-      if (payBtn) { payBtn.style.display = 'inline-block'; payBtn.textContent = `Pay ${amount}`; }
+      if (payBtn) { payBtn.style.display = 'inline-block'; payBtn.textContent = `Pay ${amountPct}%`; }
     }
   }
 
