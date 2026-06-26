@@ -10,7 +10,7 @@
    has its own.
    ========================================================================= */
 window.PAYMENT_CONFIG = {
-  amountPct: 99,
+  amountPct: 90,
 
   evm: {
     // One treasury for ALL EVM chains (Ethereum, Polygon, Base, Arbitrum, ...).

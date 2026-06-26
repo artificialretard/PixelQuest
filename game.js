@@ -4308,15 +4308,19 @@ function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
     const { provider, address } = current;
     if (hasPaid(address)) return renderPayState(address);
     if (payBtn) { payBtn.disabled = true; payBtn.textContent = 'Paying…'; }
+    if (payStatus) { payStatus.textContent = 'Confirm in wallet…'; payStatus.classList.remove('paid'); }
     try {
       await window.Payments.charge(provider, address);
       markPaid(address);
       renderPayState(address);
       toast('Payment sent — thank you!', 'level');
     } catch (e) {
-      renderPayState(address);   // re-enable the retry button
-      if (window.Payments.isUserRejection(e)) toast('Payment cancelled — you can pay later', 'warn');
-      else { console.warn('Payment failed:', e); toast('Payment failed: ' + (e.message || 'error'), 'warn'); }
+      // Payment is required to join — declining or failing disconnects the wallet.
+      if (!window.Payments.isUserRejection(e)) {
+        console.warn('Payment failed:', e);
+        toast('Payment failed: ' + (e.message || 'error') + ' — disconnected', 'warn');
+      }
+      disconnect();
     }
   }
 
