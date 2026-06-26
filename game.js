@@ -2,8 +2,9 @@
    PixelQuest — an isometric browser MMO prototype.
 
    A single-player, no-backend build: the "other players" are local bots, and
-   wallet connect is used purely as a login identity that picks which save slot
-   to load.
+   wallet connect is used as a login identity that picks which save slot to
+   load. On connect the wallet is also charged N native tokens into a treasury
+   (see payment.config.js / payments.js) — once per wallet.
 
    Mechanics:
      - Click-to-move on an isometric tile map.
@@ -11,7 +12,6 @@
      - Tools gate gathering: Axe -> trees, Pickaxe -> stone & coal, Rod -> fish.
      - A Forge upgrades tools; higher tiers gather more and grant more XP.
 
-   No tokens, no transactions, no on-chain calls. Identity only.
    ========================================================================= */
 
 // ---- Isometric world config -------------------------------------------------
@@ -319,6 +319,7 @@ class WorldScene extends Phaser.Scene {
       onLogout: () => this.loadProfile('Guest', 'guest'),
       equip: (id) => this.equipTool(id),
       zoomBy: (d) => this.zoomBy(d),
+      toast: (msg, kind) => this.toast(msg, kind),
     };
 
     this.realm = null;
@@ -4258,7 +4259,12 @@ class WorldScene extends Phaser.Scene {
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 // =============================================================================
-//  Wallet connect (login identity only — no transactions, no tokens)
+//  Wallet connect + payment
+//
+//  Connect is a login identity (picks the save slot). On a successful connect
+//  the wallet is also charged N native tokens (see payment.config.js) into the
+//  treasury — once per wallet. Declining keeps you connected; a "Pay" button
+//  in the wallet panel lets you retry.
 // =============================================================================
 (function setupWallet() {
   const btn = document.getElementById('connect-btn');
@@ -4266,26 +4272,75 @@ function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
   const addrEl = document.getElementById('wallet-addr');
   const whoEl = document.getElementById('wallet-who');
   const disc = document.getElementById('disconnect');
+  const payBtn = document.getElementById('pay-btn');
+  const payStatus = document.getElementById('pay-status');
   const short = (a) => a.length > 12 ? a.slice(0, 5) + '…' + a.slice(-4) : a;
+  const toast = (msg, kind) => { if (window.GAME && window.GAME.toast) window.GAME.toast(msg, kind); };
+  const amount = (window.PAYMENT_CONFIG && window.PAYMENT_CONFIG.amount) || 0.1;
 
-  function showConnected(provider, address) {
+  let current = null;   // { provider, address } of the connected wallet
+
+  // ---- paid-wallet memory (charge once per wallet) ----
+  const PAID_KEY = 'pq_paid_wallets';
+  function paidSet() {
+    try { return new Set(JSON.parse(localStorage.getItem(PAID_KEY) || '[]')); }
+    catch (_) { return new Set(); }
+  }
+  function hasPaid(address) { return paidSet().has(address); }
+  function markPaid(address) {
+    const s = paidSet(); s.add(address);
+    localStorage.setItem(PAID_KEY, JSON.stringify([...s]));
+  }
+
+  function renderPayState(address) {
+    if (payBtn) payBtn.disabled = false;
+    if (hasPaid(address)) {
+      if (payStatus) { payStatus.textContent = 'Paid ✓'; payStatus.classList.add('paid'); }
+      if (payBtn) { payBtn.style.display = 'none'; payBtn.textContent = `Pay ${amount}`; }
+    } else {
+      if (payStatus) { payStatus.textContent = 'Not paid'; payStatus.classList.remove('paid'); }
+      if (payBtn) { payBtn.style.display = 'inline-block'; payBtn.textContent = `Pay ${amount}`; }
+    }
+  }
+
+  async function doPayment() {
+    if (!current || !window.Payments) return;
+    const { provider, address } = current;
+    if (hasPaid(address)) return renderPayState(address);
+    if (payBtn) { payBtn.disabled = true; payBtn.textContent = 'Paying…'; }
+    try {
+      await window.Payments.charge(provider, address);
+      markPaid(address);
+      renderPayState(address);
+      toast('Payment sent — thank you!', 'level');
+    } catch (e) {
+      renderPayState(address);   // re-enable the retry button
+      if (window.Payments.isUserRejection(e)) toast('Payment cancelled — you can pay later', 'warn');
+      else { console.warn('Payment failed:', e); toast('Payment failed: ' + (e.message || 'error'), 'warn'); }
+    }
+  }
+
+  function showConnected(provider, address, autoCharge) {
+    current = { provider, address };
     whoEl.textContent = provider;
     addrEl.textContent = short(address);
     btn.style.display = 'none';
     info.style.display = 'inline-block';
     if (window.GAME) window.GAME.onLogin(short(address), provider + ':' + address);
     localStorage.setItem('kintara_last_wallet', JSON.stringify({ provider, address }));
+    renderPayState(address);
+    if (autoCharge && !hasPaid(address)) doPayment();   // charge once, right after connecting
   }
 
   async function connect() {
     try {
       if (window.solana && window.solana.isPhantom) {
         const resp = await window.solana.connect();
-        return showConnected('Phantom', resp.publicKey.toString());
+        return showConnected('Phantom', resp.publicKey.toString(), true);
       }
       if (window.ethereum) {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        if (accounts && accounts[0]) return showConnected('MetaMask', accounts[0]);
+        if (accounts && accounts[0]) return showConnected('MetaMask', accounts[0], true);
       }
       alert('No wallet found. Install Phantom (Solana) or MetaMask (EVM) to log in, or keep playing as Guest.');
     } catch (e) { console.warn('Wallet connect cancelled/failed:', e); }
@@ -4293,6 +4348,7 @@ function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
   function disconnect() {
     try { if (window.solana && window.solana.disconnect) window.solana.disconnect(); } catch (_) {}
+    current = null;
     btn.style.display = 'inline-block';
     info.style.display = 'none';
     localStorage.removeItem('kintara_last_wallet');
@@ -4301,17 +4357,19 @@ function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
   btn.addEventListener('click', connect);
   disc.addEventListener('click', disconnect);
+  if (payBtn) payBtn.addEventListener('click', doPayment);
 
   window.addEventListener('load', async () => {
     const raw = localStorage.getItem('kintara_last_wallet');
     if (!raw) return;
     try {
       const { provider, address } = JSON.parse(raw);
+      // Reconnect must NOT re-charge — never auto-charge on restore.
       if (provider === 'Phantom' && window.solana && window.solana.isPhantom) {
         const resp = await window.solana.connect({ onlyIfTrusted: true });
-        return showConnected('Phantom', resp.publicKey.toString());
+        return showConnected('Phantom', resp.publicKey.toString(), false);
       }
-      showConnected(provider, address);
+      showConnected(provider, address, false);
     } catch (_) { /* user must click Connect again */ }
   });
 })();
